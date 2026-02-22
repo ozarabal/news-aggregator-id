@@ -1,1 +1,1 @@
-"# News Aggregator IDN" 
+# News Aggregator IDN 
