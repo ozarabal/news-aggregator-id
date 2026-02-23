@@ -28,7 +28,7 @@ public interface CrawlLogRepository extends JpaRepository<CrawlLog, Long> {
      */
     @Query("""
            SELECT SUM(c.articlesSaved) FROM CrawlLog c
-           WHERE DATE(c.crawledAt) = CURRENT_DATE
+           WHERE cast(c.crawledAt as LocalDate) = local date
              AND c.status = 'SUCCESS'
            """)
     Long countArticlesSavedToday();
