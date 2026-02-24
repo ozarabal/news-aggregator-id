@@ -11,6 +11,7 @@ import org.jsoup.Jsoup;
 import org.springframework.stereotype.Component;
 
 import java.net.URL;
+import java.net.URI;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -50,7 +51,7 @@ public class RssFeedParser {
             // ---- Step 1: Fetch XML dari URL ----
             // SyndFeedInput adalah parser utama dari Rome library
             // XmlReader menangani encoding dan format XML secara otomatis
-            URL feedUrl = new URL(source.getUrl());
+            URL feedUrl = URI.create(source.getUrl()).toURL();
             SyndFeedInput input = new SyndFeedInput();
 
             // XmlReader membuka koneksi HTTP dan membaca XML feed
