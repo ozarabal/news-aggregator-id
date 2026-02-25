@@ -37,6 +37,7 @@ public class CrawlerService {
     private final SourceRepository sourceRepository;
     private final CrawlLogRepository crawlLogRepository;
     private final CrawlProducer crawlProducer;
+    private final ArticleService articleService;
 
     /**
      * Enqueue crawl semua sumber aktif ke RabbitMQ.
@@ -73,6 +74,7 @@ public class CrawlerService {
             // Step 3: Kirim task scraping ke queue (BUKAN langsung scrape)
             // ScrapeConsumer yang akan proses satu per satu secara async via RabbitMQ
             if (!savedArticles.isEmpty()) {
+                articleService.invalidateArticleCache();
                 crawlProducer.enqueueScrapeArticles(savedArticles);
             }
 
