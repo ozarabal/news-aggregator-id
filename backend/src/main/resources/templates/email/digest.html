@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>News Digest Harian</title>
+    <style>
+        /* Reset */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+               background-color: #f5f5f5; color: #333; line-height: 1.6; }
+
+        /* Container */
+        .container  { max-width: 620px; margin: 30px auto; background: #fff;
+                      border-radius: 10px; overflow: hidden;
+                      box-shadow: 0 2px 10px rgba(0,0,0,0.08); }
+
+        /* Header */
+        .header     { background: linear-gradient(135deg, #1a73e8, #0d47a1);
+                      padding: 32px 30px; text-align: center; }
+        .header h1  { color: #fff; font-size: 22px; font-weight: 700; letter-spacing: -0.3px; }
+        .header p   { color: rgba(255,255,255,0.85); font-size: 13px; margin-top: 6px; }
+
+        /* Greeting */
+        .greeting       { padding: 24px 30px 0; }
+        .greeting h2    { font-size: 18px; font-weight: 600; color: #1a1a1a; }
+        .greeting p     { color: #666; font-size: 14px; margin-top: 6px; }
+
+        /* Category Badge */
+        .section-title  { padding: 20px 30px 10px; }
+        .badge          { display: inline-block; padding: 4px 12px; border-radius: 20px;
+                          font-size: 11px; font-weight: 700; text-transform: uppercase;
+                          letter-spacing: 0.8px; color: #fff; background: #1a73e8; }
+
+        /* Article Card */
+        .article        { padding: 16px 30px; border-bottom: 1px solid #f0f0f0; }
+        .article:last-child { border-bottom: none; }
+        .article:hover  { background: #fafafa; }
+
+        .article-layout { display: flex; gap: 16px; align-items: flex-start; }
+        .article-thumb  { width: 80px; height: 60px; border-radius: 6px;
+                          object-fit: cover; flex-shrink: 0; background: #e8e8e8; }
+        .article-body   { flex: 1; min-width: 0; }
+
+        .article-source { font-size: 11px; color: #888; text-transform: uppercase;
+                          letter-spacing: 0.5px; font-weight: 600; }
+        .article-title  { font-size: 15px; font-weight: 600; color: #1a1a1a;
+                          line-height: 1.4; margin: 4px 0; }
+        .article-title a { color: #1a1a1a; text-decoration: none; }
+        .article-title a:hover { color: #1a73e8; }
+        .article-desc   { font-size: 13px; color: #666; line-height: 1.5;
+                          display: -webkit-box; -webkit-line-clamp: 2;
+                          -webkit-box-orient: vertical; overflow: hidden; }
+        .article-meta   { font-size: 11px; color: #aaa; margin-top: 6px; }
+
+        .read-btn       { display: inline-block; margin-top: 8px; padding: 5px 14px;
+                          background: #1a73e8; color: #fff; border-radius: 4px;
+                          font-size: 12px; font-weight: 600; text-decoration: none; }
+        .read-btn:hover { background: #1557b0; }
+
+        /* No articles */
+        .no-articles    { padding: 30px; text-align: center; color: #999; font-size: 14px; }
+
+        /* Footer */
+        .footer         { background: #f8f9fa; padding: 20px 30px; text-align: center;
+                          border-top: 1px solid #eee; }
+        .footer p       { font-size: 12px; color: #999; line-height: 1.7; }
+        .footer a       { color: #1a73e8; text-decoration: none; }
+        .footer a:hover { text-decoration: underline; }
+
+        .divider        { height: 1px; background: #f0f0f0; margin: 0 30px; }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <!-- ===== HEADER ===== -->
+    <div class="header">
+        <h1>News Digest</h1>
+        <!--
+            th:text = Thymeleaf expression untuk menampilkan variabel
+            ${digestDate} akan diisi oleh DigestService saat render template
+        -->
+        <p th:text="${digestDate}">Senin, 1 Januari 2024</p>
+    </div>
+
+    <!-- ===== GREETING ===== -->
+    <div class="greeting">
+        <!-- th:text="${user.fullName ?: 'Halo'}" = gunakan fullName, fallback ke 'Halo' jika null -->
+        <h2 th:text="'Halo, ' + ${user.fullName ?: 'Pembaca'} + '! '">Halo, Pembaca!</h2>
+        <p th:text="'Berikut adalah ' + ${totalArticles} + ' artikel pilihan hari ini sesuai preferensi Anda.'">
+            Berikut artikel pilihan hari ini.
+        </p>
+    </div>
+
+    <!--
+        th:each = loop seperti for-each di Java
+        articlesByCategory adalah Map<String, List<Article>> dari DigestService
+        Untuk setiap kategori, tampilkan header kategori + daftar artikelnya
+    -->
+    <div th:each="entry : ${articlesByCategory}">
+
+        <!-- ===== CATEGORY HEADER ===== -->
+        <div class="section-title">
+            <!-- th:text="${#strings.capitalize(entry.key)}" = capitalize nama kategori -->
+            <span class="badge" th:text="${#strings.toUpperCase(entry.key)}">TEKNOLOGI</span>
+        </div>
+
+        <!-- ===== ARTICLE LIST ===== -->
+        <!--
+            th:each="article : ${entry.value}" = loop artikel dalam kategori ini
+            th:if="${!entry.value.isEmpty()}" = hanya tampilkan jika ada artikel
+        -->
+        <div th:if="${!entry.value.isEmpty()}">
+            <div class="article" th:each="article : ${entry.value}">
+                <div class="article-layout">
+
+                    <!-- Thumbnail (tampilkan hanya jika ada) -->
+                    <img th:if="${article.thumbnailUrl != null}"
+                         th:src="${article.thumbnailUrl}"
+                         class="article-thumb"
+                         alt="thumbnail">
+
+                    <div class="article-body">
+                        <!-- Nama sumber -->
+                        <div class="article-source" th:text="${article.source.name}">CNN Indonesia</div>
+
+                        <!-- Judul artikel dengan link ke URL asli -->
+                        <div class="article-title">
+                            <a th:href="${article.url}" th:text="${article.title}" target="_blank">
+                                Judul Artikel
+                            </a>
+                        </div>
+
+                        <!-- Deskripsi/excerpt (tampilkan jika ada) -->
+                        <div class="article-desc"
+                             th:if="${article.description != null}"
+                             th:text="${article.description}">
+                            Deskripsi artikel...
+                        </div>
+
+                        <!-- Metadata: tanggal publish -->
+                        <div class="article-meta">
+                            <!--
+                                #temporals.format() = Thymeleaf utility untuk format LocalDateTime
+                            -->
+                            <span th:if="${article.publishedAt != null}"
+                                  th:text="${#temporals.format(article.publishedAt, 'dd MMM yyyy, HH:mm')}">
+                                1 Jan 2024, 10:00
+                            </span>
+                        </div>
+
+                        <!-- Tombol Baca Selengkapnya -->
+                        <a th:href="${article.url}" class="read-btn" target="_blank">
+                            Baca Selengkapnya →
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="divider"></div>
+    </div>
+
+    <!-- Jika tidak ada artikel sama sekali -->
+    <div class="no-articles" th:if="${totalArticles == 0}">
+        <p>Tidak ada artikel baru hari ini sesuai preferensi Anda.</p>
+        <p style="margin-top: 8px;">Coba tambah lebih banyak kategori di pengaturan preferensi Anda.</p>
+    </div>
+
+    <!-- ===== FOOTER ===== -->
+    <div class="footer">
+        <p>
+            Email ini dikirim ke <strong th:text="${user.email}">user@example.com</strong>
+            karena Anda subscribe ke News Digest.
+        </p>
+        <p style="margin-top: 8px;">
+            <!--
+                th:href="${unsubscribeUrl}" = URL unsubscribe dengan token unik per user
+                Setiap user punya token berbeda untuk keamanan
+            -->
+            <a th:href="${unsubscribeUrl}">Unsubscribe</a>
+            &nbsp;·&nbsp;
+            <a href="#">Kelola Preferensi</a>
+            &nbsp;·&nbsp;
+            <a href="#">Lihat di Browser</a>
+        </p>
+        <p style="margin-top: 12px; font-size: 11px; color: #bbb;">
+            © 2024 News Aggregator. Semua hak dilindungi.
+        </p>
+    </div>
+
+</div>
+</body>
+</html>
