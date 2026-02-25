@@ -10,100 +10,63 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * RabbitMQConfig mendefinisikan seluruh topologi messaging:
+ * RabbitMQConfig — topologi messaging lengkap.
  *
- * Arsitektur Queue kita:
+ * Queue yang tersedia:
  *
- *                         ┌─────────────────────────────────────────┐
- *                         │           EXCHANGE: newsagg.exchange     │
- *                         │            (type: Direct Exchange)       │
- *                         └──────────────────┬──────────────────────┘
- *                                            │
- *                    ┌──────────────────────┼──────────────────────┐
- *                    │ routing key:          │ routing key:         │
- *                    │ "crawl.rss"           │ "scrape.article"     │
- *                    ▼                       ▼                       
- *           ┌────────────────┐   ┌──────────────────────┐          
- *           │ crawl.rss.queue│   │ scrape.article.queue  │          
- *           │  (crawl RSS)   │   │  (scrape konten)      │          
- *           └───────┬────────┘   └──────────┬────────────┘          
- *                   │ jika gagal             │ jika gagal
- *                   ▼                        ▼
- *           ┌───────────────────────────────────────┐
- *           │      dead.letter.queue (DLQ)          │
- *           │  (pesan yang terus gagal diproses)    │
- *           └───────────────────────────────────────┘
+ *  newsagg.exchange (Direct)
+ *    ├── crawl.rss       → crawl.rss.queue       (crawl RSS feed)
+ *    ├── scrape.article  → scrape.article.queue   (scrape konten artikel)
+ *    └── email.digest    → email.digest.queue     (kirim email digest) ← NEW Phase 5
  *
- * Direct Exchange: pesan dikirim ke queue berdasarkan exact match routing key.
- * Alternatif: Topic Exchange (wildcard), Fanout Exchange (broadcast ke semua queue).
+ *  dead.letter.exchange
+ *    └── #               → dead.letter.queue      (pesan yang gagal)
  */
 @Configuration
 public class RabbitMQConfig {
 
-    // =============================================
-    // NAMA EXCHANGE & QUEUE (konstanta)
-    // =============================================
-    public static final String EXCHANGE = "newsagg.exchange";
-
-    // Queue untuk crawl RSS feed
-    public static final String QUEUE_CRAWL_RSS = "crawl.rss.queue";
-    public static final String ROUTING_KEY_CRAWL = "crawl.rss";
-
-    // Queue untuk scraping konten artikel
-    public static final String QUEUE_SCRAPE_ARTICLE = "scrape.article.queue";
-    public static final String ROUTING_KEY_SCRAPE = "scrape.article";
-
-    // Dead Letter Queue — tampung pesan yang gagal diproses berkali-kali
-    public static final String QUEUE_DEAD_LETTER = "dead.letter.queue";
+    // Exchange
+    public static final String EXCHANGE            = "newsagg.exchange";
     public static final String EXCHANGE_DEAD_LETTER = "dead.letter.exchange";
 
-    // =============================================
-    // EXCHANGE SETUP
-    // =============================================
+    // Queue & routing key — Crawl
+    public static final String QUEUE_CRAWL_RSS      = "crawl.rss.queue";
+    public static final String ROUTING_KEY_CRAWL    = "crawl.rss";
 
-    /**
-     * Main Exchange: Direct Exchange.
-     * durable=true: exchange tidak hilang jika RabbitMQ restart.
-     */
-    @Bean
-    public DirectExchange mainExchange() {
+    // Queue & routing key — Scrape
+    public static final String QUEUE_SCRAPE_ARTICLE  = "scrape.article.queue";
+    public static final String ROUTING_KEY_SCRAPE    = "scrape.article";
+
+    // Queue & routing key — Email Digest (NEW)
+    public static final String QUEUE_EMAIL_DIGEST    = "email.digest.queue";
+    public static final String ROUTING_KEY_DIGEST    = "email.digest";
+
+    // Dead Letter Queue
+    public static final String QUEUE_DEAD_LETTER     = "dead.letter.queue";
+
+    // =============================================
+    // EXCHANGE
+    // =============================================
+    @Bean public DirectExchange mainExchange() {
         return new DirectExchange(EXCHANGE, true, false);
     }
 
-    /**
-     * Dead Letter Exchange: menerima pesan yang di-reject atau expired.
-     */
-    @Bean
-    public DirectExchange deadLetterExchange() {
+    @Bean public DirectExchange deadLetterExchange() {
         return new DirectExchange(EXCHANGE_DEAD_LETTER, true, false);
     }
 
     // =============================================
-    // QUEUE SETUP
+    // QUEUES
     // =============================================
-
-    /**
-     * Queue untuk crawl RSS.
-     *
-     * Argumen penting:
-     * - x-dead-letter-exchange: jika pesan gagal diproses (NACK/expired),
-     *   kirim ke exchange ini
-     * - x-message-ttl: pesan expired setelah 1 jam (3_600_000 ms)
-     *   mencegah queue penuh dengan pesan lama yang tidak terproses
-     */
     @Bean
     public Queue crawlRssQueue() {
         return QueueBuilder.durable(QUEUE_CRAWL_RSS)
                 .withArgument("x-dead-letter-exchange", EXCHANGE_DEAD_LETTER)
                 .withArgument("x-dead-letter-routing-key", "dead.crawl.rss")
-                .withArgument("x-message-ttl", 3_600_000) // 1 jam
+                .withArgument("x-message-ttl", 3_600_000)
                 .build();
     }
 
-    /**
-     * Queue untuk scrape artikel.
-     * Sama seperti crawlRssQueue tapi untuk task scraping.
-     */
     @Bean
     public Queue scrapeArticleQueue() {
         return QueueBuilder.durable(QUEUE_SCRAPE_ARTICLE)
@@ -114,65 +77,51 @@ public class RabbitMQConfig {
     }
 
     /**
-     * Dead Letter Queue: menampung pesan yang gagal diproses.
-     * Tidak ada DLX lagi dari sini (tidak infinite loop).
+     * Queue email digest.
+     * TTL lebih pendek (30 menit) — kalau belum terkirim dalam 30 menit
+     * berarti ada masalah yang perlu diinvestigasi, masukkan ke DLQ.
      */
+    @Bean
+    public Queue emailDigestQueue() {
+        return QueueBuilder.durable(QUEUE_EMAIL_DIGEST)
+                .withArgument("x-dead-letter-exchange", EXCHANGE_DEAD_LETTER)
+                .withArgument("x-dead-letter-routing-key", "dead.email.digest")
+                .withArgument("x-message-ttl", 1_800_000) // 30 menit
+                .build();
+    }
+
     @Bean
     public Queue deadLetterQueue() {
         return QueueBuilder.durable(QUEUE_DEAD_LETTER).build();
     }
 
     // =============================================
-    // BINDING — Menghubungkan Exchange ke Queue
+    // BINDINGS
     // =============================================
-
-    /**
-     * Binding: mainExchange → crawlRssQueue via routing key "crawl.rss"
-     * Artinya: pesan yang dikirim ke mainExchange dengan routing key "crawl.rss"
-     * akan diteruskan ke crawlRssQueue.
-     */
-    @Bean
-    public Binding bindingCrawlRss() {
-        return BindingBuilder
-                .bind(crawlRssQueue())
-                .to(mainExchange())
-                .with(ROUTING_KEY_CRAWL);
+    @Bean public Binding bindingCrawlRss() {
+        return BindingBuilder.bind(crawlRssQueue()).to(mainExchange()).with(ROUTING_KEY_CRAWL);
     }
 
-    @Bean
-    public Binding bindingScrapeArticle() {
-        return BindingBuilder
-                .bind(scrapeArticleQueue())
-                .to(mainExchange())
-                .with(ROUTING_KEY_SCRAPE);
+    @Bean public Binding bindingScrapeArticle() {
+        return BindingBuilder.bind(scrapeArticleQueue()).to(mainExchange()).with(ROUTING_KEY_SCRAPE);
     }
 
-    @Bean
-    public Binding bindingDeadLetter() {
-        return BindingBuilder
-                .bind(deadLetterQueue())
-                .to(deadLetterExchange())
-                .with("#"); // wildcard: semua routing key masuk ke DLQ
+    @Bean public Binding bindingEmailDigest() {
+        return BindingBuilder.bind(emailDigestQueue()).to(mainExchange()).with(ROUTING_KEY_DIGEST);
+    }
+
+    @Bean public Binding bindingDeadLetter() {
+        return BindingBuilder.bind(deadLetterQueue()).to(deadLetterExchange()).with("#");
     }
 
     // =============================================
-    // MESSAGE CONVERTER
+    // CONVERTER & TEMPLATE
     // =============================================
-
-    /**
-     * MessageConverter: konversi object Java ↔ JSON saat kirim/terima pesan.
-     * Tanpa ini, RabbitMQ memakai Java serialization (format binary, tidak readable).
-     * Dengan Jackson2JsonMessageConverter, pesan dikirim sebagai JSON yang bisa dibaca.
-     */
     @Bean
     public MessageConverter jsonMessageConverter() {
         return new Jackson2JsonMessageConverter();
     }
 
-    /**
-     * RabbitTemplate: dipakai oleh Producer untuk kirim pesan.
-     * Set converter ke JSON agar pesan terkirim dalam format JSON.
-     */
     @Bean
     public RabbitTemplate rabbitTemplate(ConnectionFactory connectionFactory) {
         RabbitTemplate template = new RabbitTemplate(connectionFactory);
@@ -180,17 +129,6 @@ public class RabbitMQConfig {
         return template;
     }
 
-    /**
-     * Listener Container Factory: konfigurasi untuk Consumer/Worker.
-     *
-     * prefetchCount=1: Worker hanya ambil 1 pesan dari queue sekaligus.
-     * Ini penting agar distribusi kerja merata jika ada banyak worker.
-     * Tanpa ini (default prefetch tidak terbatas), worker pertama bisa
-     * mengambil semua pesan sekaligus meskipun sibuk.
-     *
-     * acknowledgeMode=MANUAL: Worker harus explicit ACK/NACK setelah selesai.
-     * Jika worker crash sebelum ACK, pesan akan dikembalikan ke queue.
-     */
     @Bean
     public SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory(
             ConnectionFactory connectionFactory) {
@@ -202,3 +140,4 @@ public class RabbitMQConfig {
         return factory;
     }
 }
+
