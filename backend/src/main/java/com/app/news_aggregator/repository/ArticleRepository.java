@@ -1,7 +1,9 @@
 package com.app.news_aggregator.repository;
 
 import com.app.news_aggregator.model.Article;
-import org.springframework.data.domain.Page;
+import com.app.news_aggregator.util.RestPage;
+
+// import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -35,12 +37,12 @@ public interface ArticleRepository extends JpaRepository<Article, Long> {
      * Ambil semua artikel berdasarkan kategori, diurutkan dari terbaru.
      * Menggunakan Pageable untuk pagination (halaman, ukuran halaman, sorting).
      */
-    Page<Article> findByCategoryOrderByPublishedAtDesc(String category, Pageable pageable);
+    RestPage<Article> findByCategoryOrderByPublishedAtDesc(String category, Pageable pageable);
 
     /**
      * Ambil semua artikel dari sumber tertentu, diurutkan dari terbaru.
      */
-    Page<Article> findBySourceIdOrderByPublishedAtDesc(Long sourceId, Pageable pageable);
+    RestPage<Article> findBySourceIdOrderByPublishedAtDesc(Long sourceId, Pageable pageable);
 
     /**
      * Cari artikel berdasarkan keyword di judul atau deskripsi.
@@ -53,7 +55,7 @@ public interface ArticleRepository extends JpaRepository<Article, Long> {
               OR LOWER(a.description) LIKE LOWER(CONCAT('%', :keyword, '%'))
            ORDER BY a.publishedAt DESC
            """)
-    Page<Article> searchByKeyword(@Param("keyword") String keyword, Pageable pageable);
+    RestPage<Article> searchByKeyword(@Param("keyword") String keyword, Pageable pageable);
 
     /**
      * Ambil artikel terpopuler berdasarkan view count.
@@ -65,7 +67,7 @@ public interface ArticleRepository extends JpaRepository<Article, Long> {
              AND a.publishedAt >= :since
            ORDER BY a.viewCount DESC, a.publishedAt DESC
            """)
-    Page<Article> findPopularByCategories(
+    RestPage<Article> findPopularByCategories(
         @Param("categories") java.util.List<String> categories,
         @Param("since") LocalDateTime since,
         Pageable pageable

@@ -5,6 +5,8 @@ import com.app.news_aggregator.dto.ArticleDto;
 import com.app.news_aggregator.exception.ResourceNotFoundException;
 import com.app.news_aggregator.model.Article;
 import com.app.news_aggregator.repository.ArticleRepository;
+import com.app.news_aggregator.util.RestPage;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -54,11 +56,11 @@ public class ArticleService {
      */
     @Cacheable(value = RedisConfig.CACHE_ARTICLES, key = "'all_' + #page + '_' + #size")
     @Transactional(readOnly = true)
-    public Page<ArticleDto.Summary> getAllArticles(int page, int size) {
+    public RestPage<ArticleDto.Summary> getAllArticles(int page, int size) {
         log.debug("[CACHE MISS] getAllArticles - query ke database (page={}, size={})", page, size);
         Pageable pageable = PageRequest.of(page, size, Sort.by("publishedAt").descending());
-        return articleRepository.findAll(pageable)
-                .map(ArticleDto.Summary::from);
+        Page<ArticleDto.Summary> rpage = articleRepository.findAll(pageable).map(ArticleDto.Summary::from);
+        return new RestPage<>(rpage.getContent(), rpage.getNumber(), rpage.getSize(), rpage.getTotalElements());
     }
 
     /**
