@@ -2,8 +2,9 @@
 
 > A full-stack news aggregation platform that automatically crawls Indonesian news sources via RSS feeds, delivers personalized email digests, and presents articles through a modern editorial-style web interface.
 
-**Live Demo:** `[https://green-sand-00dc74200.1.azurestaticapps.net](https://green-sand-00dc74200.1.azurestaticapps.net/)
-**API Docs (Swagger):** `[https://news-aggregator-id-api.azurewebsites.net/swagger-ui/index.html](https://news-aggregator-id-api.azurewebsites.net/swagger-ui/index.html)
+**Live Demo:** [Web](https://green-sand-00dc74200.1.azurestaticapps.net/)
+
+**API Docs (Swagger):** [API Docs](https://news-aggregator-id-api.azurewebsites.net/swagger-ui/index.html)
 
 ---
 
