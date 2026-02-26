@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
@@ -47,14 +48,16 @@ public class RedisConfig {
 
     /**
      * ObjectMapper khusus untuk Redis serialization.
+     * BUKAN @Bean — tidak boleh didaftarkan ke Spring context karena akan menimpa
+     * ObjectMapper default Spring MVC dan menyebabkan semua response HTTP ikut
+     * menyertakan field "@class" (DefaultTyping.NON_FINAL).
      *
      * Kenapa tidak pakai ObjectMapper default?
      * - Redis perlu tahu TYPE dari object yang disimpan agar bisa deserilisasi
      * - Kita aktifkan DefaultTyping: Redis akan simpan nama class bersama datanya
      * - JavaTimeModule diperlukan agar LocalDateTime bisa di-serialisasi ke JSON
      */
-    @Bean(name = "redisObjectMapper")
-    public ObjectMapper redisObjectMapper() {
+    private ObjectMapper redisObjectMapper() {
         ObjectMapper mapper = new ObjectMapper();
         // Handle LocalDateTime, LocalDate, dll
         mapper.registerModule(new JavaTimeModule());
@@ -71,8 +74,10 @@ public class RedisConfig {
     /**
      * RedisTemplate: dipakai untuk operasi Redis manual (get, set, delete).
      * Key: String, Value: JSON.
+     * Hanya dibuat saat spring.cache.type=redis.
      */
     @Bean
+    @ConditionalOnProperty(name = "spring.cache.type", havingValue = "redis")
     public RedisTemplate<String, Object> redisTemplate(
             RedisConnectionFactory connectionFactory) {
 
@@ -97,6 +102,10 @@ public class RedisConfig {
     /**
      * CacheManager: mengelola semua cache dalam aplikasi.
      *
+     * Bean ini HANYA aktif saat spring.cache.type=redis.
+     * Saat spring.cache.type=simple, Spring Boot menggunakan ConcurrentMapCacheManager
+     * bawaan — semua @Cacheable/@CacheEvict tetap berfungsi tanpa Redis.
+     *
      * Kita set TTL berbeda untuk setiap cache:
      * - articles      : 5 menit (data sering berubah karena crawl tiap 15 menit)
      * - article_detail: 10 menit (detail artikel jarang berubah)
@@ -105,6 +114,7 @@ public class RedisConfig {
      * - search        : 2 menit (hasil search lebih dinamis)
      */
     @Bean
+    @ConditionalOnProperty(name = "spring.cache.type", havingValue = "redis")
     public CacheManager cacheManager(RedisConnectionFactory connectionFactory) {
 
         // Konfigurasi default untuk cache yang tidak punya setting khusus
