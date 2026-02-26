@@ -1,5 +1,6 @@
 package com.app.news_aggregator.service;
 
+import com.app.news_aggregator.config.RedisConfig;
 import com.app.news_aggregator.crawler.RssFeedParser;
 import com.app.news_aggregator.model.Article;
 import com.app.news_aggregator.model.CrawlLog;
@@ -11,6 +12,8 @@ import com.app.news_aggregator.queue.CrawlProducer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 // import org.springframework.scheduling.annotation.Async;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -56,6 +59,10 @@ public class CrawlerService {
      * Juga bisa dipanggil langsung dari CrawlerController (manual trigger).
      */
     @Transactional
+    @Caching(evict = {
+        @CacheEvict(value = RedisConfig.CACHE_SOURCES, allEntries = true),
+        @CacheEvict(value = RedisConfig.CACHE_CATEGORIES, allEntries = true)
+    })
     public CrawlLog crawlSource(Source source) {
         log.info("Crawl sumber: {} (ID: {})", source.getName(), source.getId());
         long startTime = System.currentTimeMillis();
