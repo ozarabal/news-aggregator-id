@@ -3,6 +3,9 @@ package com.app.news_aggregator.controller;
 import com.app.news_aggregator.dto.ApiResponse;
 import com.app.news_aggregator.dto.ArticleDto;
 import com.app.news_aggregator.service.ArticleService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -23,6 +26,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/articles")
 @RequiredArgsConstructor
+@Tag(name = "Articles", description = "Endpoint untuk mengambil dan mencari artikel berita")
 public class ArticleController {
 
     private final ArticleService articleService;
@@ -38,11 +42,32 @@ public class ArticleController {
      * - sourceId: filter by sumber (opsional)
      */
     @GetMapping
+    @Operation(
+        summary = "Ambil daftar artikel",
+        description = """
+            Mengambil daftar artikel dengan pagination. Mendukung tiga mode:
+            - **Default**: semua artikel terbaru
+            - **Filter kategori**: tambahkan `?category=teknologi`
+            - **Filter sumber**: tambahkan `?sourceId=1`
+            - **Pencarian**: tambahkan `?search=keyword` (prioritas tertinggi)
+
+            Hanya satu mode yang aktif per request. Urutan prioritas: `search` > `category` > `sourceId` > default.
+            """
+    )
     public ResponseEntity<ApiResponse<Page<ArticleDto.Summary>>> getArticles(
+            @Parameter(description = "Nomor halaman (0-indexed)", example = "0")
             @RequestParam(defaultValue = "0") int page,
+
+            @Parameter(description = "Jumlah artikel per halaman", example = "20")
             @RequestParam(defaultValue = "20") int size,
+
+            @Parameter(description = "Filter berdasarkan kategori, misal: teknologi, bisnis, olahraga")
             @RequestParam(required = false) String category,
+
+            @Parameter(description = "Kata kunci pencarian pada judul dan deskripsi artikel")
             @RequestParam(required = false) String search,
+
+            @Parameter(description = "Filter berdasarkan ID sumber RSS")
             @RequestParam(required = false) Long sourceId) {
 
         Page<ArticleDto.Summary> articles;
@@ -71,7 +96,20 @@ public class ArticleController {
      * View count akan otomatis diincrement saat endpoint ini dipanggil.
      */
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<ArticleDto.Detail>> getArticleById(@PathVariable Long id) {
+    @Operation(
+        summary = "Ambil detail artikel",
+        description = """
+            Mengambil detail lengkap satu artikel berdasarkan ID, termasuk konten hasil scraping (jika tersedia).
+
+            **Catatan:** Setiap kali endpoint ini dipanggil, `viewCount` artikel akan otomatis bertambah 1.
+
+            Jika `isScraped = false`, field `content` akan bernilai `null`.
+            Dalam kondisi ini, tampilkan `description` sebagai fallback.
+            """
+    )
+    public ResponseEntity<ApiResponse<ArticleDto.Detail>> getArticleById(
+            @Parameter(description = "ID unik artikel", example = "1", required = true)
+            @PathVariable Long id) {
         ArticleDto.Detail article = articleService.getArticleById(id);
         return ResponseEntity.ok(
             ApiResponse.success("Berhasil mengambil detail artikel", article)

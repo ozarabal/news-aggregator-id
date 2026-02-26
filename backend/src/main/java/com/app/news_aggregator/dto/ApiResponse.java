@@ -1,5 +1,6 @@
 package com.app.news_aggregator.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -25,13 +26,20 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@Schema(description = "Wrapper standar untuk semua response API")
 public class ApiResponse<T> {
 
+    @Schema(description = "True jika request berhasil, false jika gagal", example = "true")
     private boolean success;
+
+    @Schema(description = "Pesan status dari server", example = "Berhasil mengambil daftar artikel")
     private String message;
+
+    @Schema(description = "Data payload response. Tipe bervariasi tergantung endpoint")
     private T data;
 
     @Builder.Default
+    @Schema(description = "Waktu server memproses request (ISO 8601)", example = "2024-01-15T10:00:00")
     private LocalDateTime timestamp = LocalDateTime.now();
 
     // ---- Static Factory Methods ----

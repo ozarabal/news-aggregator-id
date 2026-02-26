@@ -70,13 +70,14 @@ public class ArticleService {
      */
     @Cacheable(value = RedisConfig.CACHE_ARTICLES, key = "'cat_' + #category + '_' + #page + '_' + #size")
     @Transactional(readOnly = true)
-    public Page<ArticleDto.Summary> getArticlesByCategory(String category, int page, int size) {
+    public RestPage<ArticleDto.Summary> getArticlesByCategory(String category, int page, int size) {
         log.debug("[CACHE MISS] getArticlesByCategory - query ke database (category={})", category);
 
         Pageable pageable = PageRequest.of(page, size);
-        return articleRepository
+        Page<ArticleDto.Summary> rpage = articleRepository
                 .findByCategoryOrderByPublishedAtDesc(category.toLowerCase(), pageable)
                 .map(ArticleDto.Summary::from);
+        return new RestPage<>(rpage.getContent(), rpage.getNumber(), rpage.getSize(), rpage.getTotalElements());
     }
 
     /**
@@ -85,11 +86,12 @@ public class ArticleService {
      */
     @Cacheable(value = RedisConfig.CACHE_ARTICLES, key = "'src_' + #sourceId + '_' + #page + '_' + #size")
     @Transactional(readOnly = true)
-    public Page<ArticleDto.Summary> getArticlesBySource(Long sourceId, int page, int size) {
+    public RestPage<ArticleDto.Summary> getArticlesBySource(Long sourceId, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
-        return articleRepository
+        Page<ArticleDto.Summary> rpage = articleRepository
                 .findBySourceIdOrderByPublishedAtDesc(sourceId, pageable)
                 .map(ArticleDto.Summary::from);
+        return new RestPage<>(rpage.getContent(), rpage.getNumber(), rpage.getSize(), rpage.getTotalElements());
     }
 
     /**
@@ -120,7 +122,7 @@ public class ArticleService {
      */
     @Cacheable(value = RedisConfig.CACHE_SEARCH, key = "#keyword.toLowerCase() + '_' + #page + '_' + #size")
     @Transactional(readOnly = true)
-    public Page<ArticleDto.Summary> searchArticles(String keyword, int page, int size) {
+    public RestPage<ArticleDto.Summary> searchArticles(String keyword, int page, int size) {
         log.debug("Mencari artikel dengan keyword: '{}'", keyword);
 
         if (keyword == null || keyword.trim().isEmpty()) {
@@ -128,8 +130,9 @@ public class ArticleService {
         }
 
         Pageable pageable = PageRequest.of(page, size);
-        return articleRepository.searchByKeyword(keyword.trim(), pageable)
+        Page<ArticleDto.Summary> rpage = articleRepository.searchByKeyword(keyword.trim(), pageable)
                 .map(ArticleDto.Summary::from);
+        return new RestPage<>(rpage.getContent(), rpage.getNumber(), rpage.getSize(), rpage.getTotalElements());
     }
 
     /**
