@@ -53,6 +53,10 @@ public class User extends BaseEntity {
     @Column(name= "digest_unsubscribe_token", unique=true)
     private String digestUnsubscribeToken;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    @Builder.Default
+    private Role role = Role.USER;
 
     /**
      * Relasi One-to-Many ke UserCategoryPreference.
@@ -65,6 +69,8 @@ public class User extends BaseEntity {
     @Column(name = "category")
     @Builder.Default
     private List<String> categoryPreferences = new ArrayList<>();
+
+    public enum Role { USER, ADMIN }
 
     public enum DigestFrequency {
         DAILY, WEEKLY

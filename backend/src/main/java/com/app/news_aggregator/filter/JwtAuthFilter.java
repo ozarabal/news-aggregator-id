@@ -16,6 +16,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.Collections;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 /**
  * Filter yang berjalan sekali per request untuk memvalidasi JWT.
@@ -54,8 +55,9 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         // Only set if not already authenticated (avoid redundant DB calls)
         if (SecurityContextHolder.getContext().getAuthentication() == null) {
             userRepository.findById(userId).ifPresent(user -> {
+                var authority = new SimpleGrantedAuthority("ROLE_" + user.getRole().name());
                 UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
-                        user, null, Collections.emptyList());
+                        user, null, Collections.singletonList(authority));
                 auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(auth);
             });

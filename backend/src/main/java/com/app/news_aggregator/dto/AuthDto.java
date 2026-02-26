@@ -52,6 +52,7 @@ public class AuthDto {
             String fullName,
             boolean digestEnabled,
             String digestFrequency,
-            List<String> categories
+            List<String> categories,
+            String role
     ) {}
 }

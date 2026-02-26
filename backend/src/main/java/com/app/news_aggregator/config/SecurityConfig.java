@@ -1,6 +1,7 @@
 package com.app.news_aggregator.config;
 
 import com.app.news_aggregator.filter.JwtAuthFilter;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -22,8 +23,9 @@ import java.util.List;
 /**
  * Spring Security configuration.
  *
- * - Public endpoints: semua GET artikel/sumber, auth, admin ops (admin page tetap berfungsi tanpa login)
- * - Protected: /api/v1/bookmarks/** dan /api/v1/users/** (butuh JWT)
+ * - Public endpoints: auth, GET articles, GET sources/categories (untuk register)
+ * - ADMIN only: sources CRUD, crawler, cache, digest
+ * - Auth required: users, bookmarks
  * - Stateless session (JWT-based, tidak pakai HttpSession)
  */
 @Configuration
@@ -51,25 +53,38 @@ public class SecurityConfig {
                 // Articles — public read
                 .requestMatchers(HttpMethod.GET, "/api/v1/articles/**").permitAll()
 
-                // Sources — public read, admin write (admin page works without login)
-                .requestMatchers("/api/v1/sources/**").permitAll()
+                // Categories — public (used by RegisterPage for preference selection)
+                .requestMatchers(HttpMethod.GET, "/api/v1/sources/categories").permitAll()
 
-                // Crawler & cache — admin ops, keep public
-                .requestMatchers("/api/v1/crawler/**").permitAll()
-                .requestMatchers("/api/v1/cache/**").permitAll()
-
-                // Digest — public (trigger for testing, unsubscribe link from email)
-                .requestMatchers("/api/v1/digest/**").permitAll()
-
-                // Swagger/OpenAPI
+                // Swagger/OpenAPI — public
                 .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
 
-                // User profile & bookmarks — require JWT
+                // Admin-only: all source CRUD (list, create, update, toggle, delete)
+                .requestMatchers("/api/v1/sources/**").hasRole("ADMIN")
+
+                // Admin-only: crawler, cache, digest management
+                .requestMatchers("/api/v1/crawler/**").hasRole("ADMIN")
+                .requestMatchers("/api/v1/cache/**").hasRole("ADMIN")
+                .requestMatchers("/api/v1/digest/**").hasRole("ADMIN")
+
+                // Auth required: user profile & bookmarks
                 .requestMatchers("/api/v1/users/**").authenticated()
                 .requestMatchers("/api/v1/bookmarks/**").authenticated()
 
                 // Anything else — require auth
                 .anyRequest().authenticated()
+            )
+            .exceptionHandling(ex -> ex
+                .authenticationEntryPoint((req, res, e) -> {
+                    res.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    res.setContentType("application/json;charset=UTF-8");
+                    res.getWriter().write("{\"success\":false,\"message\":\"Autentikasi diperlukan\"}");
+                })
+                .accessDeniedHandler((req, res, e) -> {
+                    res.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                    res.setContentType("application/json;charset=UTF-8");
+                    res.getWriter().write("{\"success\":false,\"message\":\"Akses ditolak. Hanya admin yang diizinkan.\"}");
+                })
             )
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 

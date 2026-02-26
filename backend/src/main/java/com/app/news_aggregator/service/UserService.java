@@ -125,7 +125,8 @@ public class UserService {
                 user.getFullName(),
                 Boolean.TRUE.equals(user.getDigestEnabled()),
                 user.getDigestFrequency() != null ? user.getDigestFrequency().name() : "DAILY",
-                new ArrayList<>(user.getCategoryPreferences())
+                new ArrayList<>(user.getCategoryPreferences()),
+                user.getRole() != null ? user.getRole().name() : "USER"
         );
     }
 }

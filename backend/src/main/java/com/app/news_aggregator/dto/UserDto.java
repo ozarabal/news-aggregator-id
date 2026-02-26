@@ -24,7 +24,8 @@ public class UserDto {
             String fullName,
             boolean digestEnabled,
             String digestFrequency,
-            List<String> categories
+            List<String> categories,
+            String role
     ) {
         public static UserProfile from(User user) {
             return new UserProfile(
@@ -33,7 +34,8 @@ public class UserDto {
                     user.getFullName(),
                     Boolean.TRUE.equals(user.getDigestEnabled()),
                     user.getDigestFrequency() != null ? user.getDigestFrequency().name() : "DAILY",
-                    new ArrayList<>(user.getCategoryPreferences())
+                    new ArrayList<>(user.getCategoryPreferences()),
+                    user.getRole() != null ? user.getRole().name() : "USER"
             );
         }
     }
